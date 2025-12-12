@@ -215,11 +215,12 @@
     <div class="input-container">
         <div class="mode-selector">
             <button class="mode-btn active" onclick="setMode('일반', this)">💬 일반대화</button>
-            <button class="mode-btn" onclick="setMode('/퀴즈', this)">🎯 퀴즈</button>
-            <button class="mode-btn" onclick="setMode('/의견', this)">📝 평가/의견</button>
-            <button class="mode-btn" onclick="setMode('/상담', this)">🩹 상담일지</button>
-            <button class="mode-btn" onclick="setMode('/일지', this)">📔 훈련일지</button>
+            <button class="mode-btn" onclick="setMode('/일지', this)">📔 학습활동서</button>
             <button class="mode-btn" onclick="setMode('/안전', this)">⛑️ 안전수칙</button>
+            <button class="mode-btn" onclick="setMode('/질문', this)">❓ 질문</button>
+            <button class="mode-btn" onclick="setMode('/의견', this)">📝 의견(총평)</button>
+            <button class="mode-btn" onclick="setMode('/상담', this)">🩹 상담일지</button>
+            <button class="mode-btn" onclick="setMode('/퀴즈', this)">🎯 퀴즈</button>
         </div>
 
         <div id="suggestion-area" class="suggestion-area"></div>
@@ -237,13 +238,25 @@
 
         let currentCommand = ''; // 현재 선택된 명령어 (예: /퀴즈)
         
-        // 기능별 추천 예시 데이터 (선생님이 원하신 4가지 예시 적용)
+        // 기능별 추천 예시 데이터 (쉼표 오류 수정됨)
         const suggestions = {
-            '/퀴즈': [
-                "사다리 작업 시 안전 수칙",
-                "CO2 용접 토치 각도와 진행 방향",
-                "에스프레소 과소 추출의 원인",
-                "파이썬 변수 명명 규칙"
+            '/일지': [
+                "에스프레소 추출 실습, 원두 분쇄도 조절",
+                "보일러 급수 연수기 점검, 펌프 조작",
+                "범용 선반 가공, 공작물 중심 맞추기",
+                "3D 프린터 출력 실습, 필라멘트 교체"
+            ],
+            '/질문': [
+                "인터록 회로가 뭐야?",
+                "베어링이 왜 필요해?",
+                "전압과 전류의 차이점",
+                "API가 뭐야?"
+            ],
+            '/안전': [
+                "아크 용접기 사용",
+                "밀링 머신 사용",
+                "지게차 화물 운반 작업",
+                "배전반 차단기 교체 작업"
             ],
             '/의견': [
                 "용접 비드 모양은 좋은데 보호구를 자꾸 깜빡함",
@@ -252,22 +265,15 @@
                 "지각이 잦고 수업 시간에 자주 조음"
             ],
             '/상담': [
-                "일이 생각보다 너무 힘들어서 퇴사 고민 중",
-                "사수랑 사이가 안 좋음. 물어보기가 겁남",
-                "다음 달 외부평가 떨어질까 봐 너무 불안해함",
-                "월급이 적어서 생활이 힘들다고 가불 물어봄"
+                "CNC 선반 좌표계 설정이 어렵다고 함. 최근 여자친구와 이별함.",
+                "배선 작업 실수가 잦아 실망함. 밤에 수면제 복용.",
+                "동료가 면박을 줘서 주눅 듦. 근무 지속 불안.",
             ],
-            '/일지': [
-                "에스프레소 추출 실습, 원두 분쇄도 조절",
-                "보일러 급수 연수기 점검, 펌프 조작",
-                "범용 선반 가공, 공작물 중심 맞추기",
-                "3D 프린터 출력 실습, 필라멘트 교체"
-            ],
-            '/안전': [
-                "아크 용접기 사용",
-                "밀링 머신 사용",
-                "지게차 화물 운반 작업",
-                "배전반 차단기 교체 작업"
+            '/퀴즈': [
+                "사다리 작업 시 안전 수칙",
+                "CO2 용접 토치 각도와 진행 방향",
+                "에스프레소 과소 추출의 원인",
+                "파이썬 변수 명명 규칙"
             ]
         };
 
@@ -301,7 +307,7 @@
                     chip.innerText = text;
                     chip.onclick = () => {
                         document.getElementById('user-input').value = text; // 클릭 시 입력창에 자동 입력
-                        sendMessage(); // 바로 전송 원하면 이 줄 유지, 아니면 삭제
+                        // sendMessage(); // 자동 전송을 원하면 주석 해제
                     };
                     area.appendChild(chip);
                 });
@@ -328,13 +334,10 @@
             document.getElementById('loading-spinner').style.display = 'block';
 
             // 3. 서버로 전송 (명령어 + 텍스트)
-            // 슬랙 명령어처럼 "/퀴즈 내용" 형태로 합쳐서 보냄
-            const fullText = currentCommand ? `${currentCommand} ${message}` : message;
-            
-            // form-urlencoded 방식으로 전송 (Apps Script doPost 호환성 최적화)
+            // 폼 데이터 형식으로 전송
             const formData = new URLSearchParams();
-            formData.append('command', currentCommand); // 봇 로직에서 command 구분용
-            formData.append('text', message);           // 실제 내용
+            formData.append('command', currentCommand); 
+            formData.append('text', message);           
 
             fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
@@ -345,10 +348,10 @@
                 document.getElementById('loading-spinner').style.display = 'none';
                 input.disabled = false;
                 
-                // Slack 포맷의 응답(blocks)에서 텍스트만 추출해서 보여줌
+                // Code.gs에서 반환하는 JSON 구조에 따라 처리
                 let botText = "";
                 if (data.blocks && data.blocks.length > 1) {
-                    botText = data.blocks[1].text.text; // 보통 두 번째 블록에 답변이 있음
+                    botText = data.blocks[1].text.text; 
                 } else if (data.text) {
                     botText = data.text;
                 } else {
