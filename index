@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <title>일학습병행 AI 튜터</title>
+    <style>
+      /* 전체 레이아웃 (모바일 친화적) */
+      body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background-color: #f2f2f2; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+      
+      /* 헤더 */
+      .header { background-color: #3b2479; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.1em; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+      
+      /* 채팅 영역 */
+      #chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+      
+      /* 말풍선 스타일 */
+      .message { max-width: 80%; padding: 10px 14px; border-radius: 15px; font-size: 0.95em; line-height: 1.5; position: relative; word-wrap: break-word; }
+      .bot-msg { align-self: flex-start; background-color: white; color: #333; border-top-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+      .user-msg { align-self: flex-end; background-color: #fee500; color: #3b1e1e; border-top-right-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+      
+      /* 입력 영역 */
+      .input-area { background: white; padding: 10px; border-top: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
+      
+      /* 기능 선택 버튼들 (스크롤 가능) */
+      .mode-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+      .mode-btn { background: #eee; border: none; padding: 8px 12px; border-radius: 20px; font-size: 0.85em; white-space: nowrap; cursor: pointer; color: #555; transition: all 0.2s; }
+      .mode-btn.active { background: #3b2479; color: white; font-weight: bold; }
+      
+      /* 입력창과 전송버튼 */
+      .input-wrapper { display: flex; gap: 10px; }
+      input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 1em; }
+      button#send-btn { background: #3b2479; color: white; border: none; padding: 0 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+      button#send-btn:disabled { background: #ccc; }
+
+      /* 로딩 애니메이션 */
+      .typing-indicator { display: none; align-self: flex-start; background: white; padding: 8px 12px; border-radius: 15px; margin-bottom: 10px; font-size: 0.8em; color: #888; }
+      .typing-indicator span { display: inline-block; width: 5px; height: 5px; background-color: #888; border-radius: 50%; animation: typing 1s infinite; margin: 0 2px; }
+      @keyframes typing { 0% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } 100% { opacity: 0.3; transform: translateY(0); } }
+
+      /* 마크다운 스타일 (간단) */
+      .bot-msg strong { color: #3b2479; }
+      .bot-msg p { margin: 5px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="header">🎓 일학습병행 스마트 AI 튜터</div>
+    
+    <div id="chat-container">
+      <div class="message bot-msg">
+        안녕하세요! 👋<br>
+        무엇을 도와드릴까요? 아래 버튼을 눌러 기능을 선택해보세요.
+      </div>
+    </div>
+
+    <div class="typing-indicator" id="loading">
+      답변 작성 중 <span></span><span></span><span></span>
+    </div>
+
+    <div class="input-area">
+      <div class="mode-selector">
+        <button class="mode-btn active" onclick="setMode('일반', this)">💬 일반대화</button>
+        <button class="mode-btn" onclick="setMode('규정', this)">📘 규정검색</button>
+        <button class="mode-btn" onclick="setMode('일지', this)">📝 일지작성</button>
+        <button class="mode-btn" onclick="setMode('안전', this)">⛑️ 안전수칙</button>
+        <button class="mode-btn" onclick="setMode('평가', this)">📊 평가생성</button>
+        <button class="mode-btn" onclick="setMode('상담', this)">🩹 상담일지</button>
+        <button class="mode-btn" onclick="setMode('퀴즈', this)">🎯 퀴즈</button>
+        <button class="mode-btn" onclick="setMode('TBM', this)">📢 TBM</button>
+        <button class="mode-btn" onclick="setMode('통역', this)">🌏 통역</button>
+      </div>
+
+      <div class="input-wrapper">
+        <input type="text" id="user-input" placeholder="메시지를 입력하세요..." onkeypress="handleEnter(event)">
+        <button id="send-btn" onclick="sendMessage()">전송</button>
+      </div>
+    </div>
+
+    <script>
+      let currentMode = '일반';
+
+      function setMode(mode, btn) {
+        currentMode = mode;
+        // 버튼 스타일 변경
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // 힌트 텍스트 변경
+        const input = document.getElementById('user-input');
+        if (mode === '일지') input.placeholder = "예: 용접 실습, 비드 확인했습니다";
+        else if (mode === '규정') input.placeholder = "예: 출석 인정 기준이 뭐야?";
+        else if (mode === '안전') input.placeholder = "예: 선반 작업 안전수칙";
+        else input.placeholder = mode + " 관련 내용을 입력하세요...";
+        
+        input.focus();
+      }
+
+      function handleEnter(e) {
+        if (e.key === 'Enter') sendMessage();
+      }
+
+      function sendMessage() {
+        const input = document.getElementById('user-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        // 1. 내 메시지 표시
+        addMessage(message, 'user');
+        input.value = '';
+        input.disabled = true;
+        document.getElementById('send-btn').disabled = true;
+
+        // 2. 로딩 표시
+        document.getElementById('loading').style.display = 'block';
+        scrollToBottom();
+
+        // 3. 서버 요청 (Google Apps Script)
+        google.script.run
+          .withSuccessHandler(response => {
+            document.getElementById('loading').style.display = 'none';
+            addMessage(response, 'bot'); // AI 답변 표시
+            input.disabled = false;
+            document.getElementById('send-btn').disabled = false;
+            input.focus();
+          })
+          .withFailureHandler(error => {
+            document.getElementById('loading').style.display = 'none';
+            addMessage("오류가 발생했습니다. 다시 시도해주세요.", 'bot');
+            input.disabled = false;
+            document.getElementById('send-btn').disabled = false;
+          })
+          .processUserRequest(currentMode, message);
+      }
+
+      function addMessage(text, sender) {
+        const container = document.getElementById('chat-container');
+        const div = document.createElement('div');
+        div.className = `message ${sender}-msg`;
+        // 간단한 줄바꿈 처리
+        div.innerHTML = text.replace(/\n/g, '<br>'); 
+        container.appendChild(div);
+        scrollToBottom();
+      }
+
+      function scrollToBottom() {
+        const container = document.getElementById('chat-container');
+        container.scrollTop = container.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
