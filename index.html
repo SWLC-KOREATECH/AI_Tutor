@@ -76,21 +76,20 @@
     </div>
 
     <script>
+      // 🚨 여기에 아까 배포한 Apps Script의 '웹 앱 URL'을 넣으세요!
+      // (끝이 /exec로 끝나는 주소여야 합니다)
+      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/xxxxxxxxxxxx/exec";
+
       let currentMode = '일반';
 
       function setMode(mode, btn) {
         currentMode = mode;
-        // 버튼 스타일 변경
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        
-        // 힌트 텍스트 변경
         const input = document.getElementById('user-input');
-        if (mode === '일지') input.placeholder = "예: 용접 실습, 비드 확인했습니다";
-        else if (mode === '규정') input.placeholder = "예: 출석 인정 기준이 뭐야?";
-        else if (mode === '안전') input.placeholder = "예: 선반 작업 안전수칙";
-        else input.placeholder = mode + " 관련 내용을 입력하세요...";
-        
+        input.placeholder = (mode === '일지') ? "예: 용접 실습, 비드 확인했습니다" : 
+                            (mode === '규정') ? "예: 출석 인정 기준이 뭐야?" : 
+                            mode + " 관련 내용을 입력하세요...";
         input.focus();
       }
 
@@ -103,44 +102,45 @@
         const message = input.value.trim();
         if (!message) return;
 
-        // 1. 내 메시지 표시
         addMessage(message, 'user');
         input.value = '';
         input.disabled = true;
         document.getElementById('send-btn').disabled = true;
-
-        // 2. 로딩 표시
         document.getElementById('loading').style.display = 'block';
         scrollToBottom();
 
-        // 3. 서버 요청 (Google Apps Script)
-        google.script.run
-          .withSuccessHandler(response => {
-            document.getElementById('loading').style.display = 'none';
-            addMessage(response, 'bot'); // AI 답변 표시
-            input.disabled = false;
-            document.getElementById('send-btn').disabled = false;
-            input.focus();
-          })
-          .withFailureHandler(error => {
-            document.getElementById('loading').style.display = 'none';
-            addMessage("오류가 발생했습니다. 다시 시도해주세요.", 'bot');
-            input.disabled = false;
-            document.getElementById('send-btn').disabled = false;
-          })
-          .processUserRequest(currentMode, message);
+        // [수정된 부분] google.script.run 대신 fetch 사용
+        fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          // 중요: CORS 문제 회피를 위해 text/plain 사용
+          body: JSON.stringify({ mode: currentMode, message: message })
+        })
+        .then(response => response.text())
+        .then(text => {
+          document.getElementById('loading').style.display = 'none';
+          addMessage(text, 'bot');
+          input.disabled = false;
+          document.getElementById('send-btn').disabled = false;
+          input.focus();
+        })
+        .catch(error => {
+          document.getElementById('loading').style.display = 'none';
+          addMessage("통신 오류가 발생했습니다.", 'bot');
+          console.error(error);
+          input.disabled = false;
+          document.getElementById('send-btn').disabled = false;
+        });
       }
-
+      
+      // ... (addMessage, scrollToBottom 함수는 기존과 동일) ...
       function addMessage(text, sender) {
         const container = document.getElementById('chat-container');
         const div = document.createElement('div');
         div.className = `message ${sender}-msg`;
-        // 간단한 줄바꿈 처리
-        div.innerHTML = text.replace(/\n/g, '<br>'); 
+        div.innerHTML = text.replace(/\n/g, '<br>');
         container.appendChild(div);
         scrollToBottom();
       }
-
       function scrollToBottom() {
         const container = document.getElementById('chat-container');
         container.scrollTop = container.scrollHeight;
