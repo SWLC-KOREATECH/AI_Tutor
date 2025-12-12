@@ -1,150 +1,389 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>일학습병행 AI 튜터</title>
     <style>
-      /* 전체 레이아웃 (모바일 친화적) */
-      body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background-color: #f2f2f2; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-      
-      /* 헤더 */
-      .header { background-color: #3b2479; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.1em; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-      
-      /* 채팅 영역 */
-      #chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-      
-      /* 말풍선 스타일 */
-      .message { max-width: 80%; padding: 10px 14px; border-radius: 15px; font-size: 0.95em; line-height: 1.5; position: relative; word-wrap: break-word; }
-      .bot-msg { align-self: flex-start; background-color: white; color: #333; border-top-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-      .user-msg { align-self: flex-end; background-color: #fee500; color: #3b1e1e; border-top-right-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-      
-      /* 입력 영역 */
-      .input-area { background: white; padding: 10px; border-top: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
-      
-      /* 기능 선택 버튼들 (스크롤 가능) */
-      .mode-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
-      .mode-btn { background: #eee; border: none; padding: 8px 12px; border-radius: 20px; font-size: 0.85em; white-space: nowrap; cursor: pointer; color: #555; transition: all 0.2s; }
-      .mode-btn.active { background: #3b2479; color: white; font-weight: bold; }
-      
-      /* 입력창과 전송버튼 */
-      .input-wrapper { display: flex; gap: 10px; }
-      input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 1em; }
-      button#send-btn { background: #3b2479; color: white; border: none; padding: 0 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-      button#send-btn:disabled { background: #ccc; }
+        /* --- 디자인 스타일 (카카오톡 테마) --- */
+        :root {
+            --primary-color: #3b2479; /* 메인 컬러 */
+            --bg-color: #b2c7d9;      /* 배경색 */
+            --my-msg-bg: #ffe934;     /* 내 메시지 배경 */
+            --bot-msg-bg: #ffffff;    /* 봇 메시지 배경 */
+        }
 
-      /* 로딩 애니메이션 */
-      .typing-indicator { display: none; align-self: flex-start; background: white; padding: 8px 12px; border-radius: 15px; margin-bottom: 10px; font-size: 0.8em; color: #888; }
-      .typing-indicator span { display: inline-block; width: 5px; height: 5px; background-color: #888; border-radius: 50%; animation: typing 1s infinite; margin: 0 2px; }
-      @keyframes typing { 0% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } 100% { opacity: 0.3; transform: translateY(0); } }
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-      /* 마크다운 스타일 (간단) */
-      .bot-msg strong { color: #3b2479; }
-      .bot-msg p { margin: 5px 0; }
+        /* 헤더 */
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        /* 채팅 영역 */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 메시지 스타일 */
+        .message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.95em;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        
+        .bot-msg {
+            align-self: flex-start;
+            background-color: var(--bot-msg-bg);
+            color: #333;
+            border-top-left-radius: 2px;
+        }
+        
+        .user-msg {
+            align-self: flex-end;
+            background-color: var(--my-msg-bg);
+            color: #3b1e1e;
+            border-top-right-radius: 2px;
+        }
+
+        /* 봇 프로필 이미지 (이모지 활용) */
+        .bot-profile {
+            font-size: 1.5em;
+            margin-right: 8px;
+            float: left;
+        }
+
+        /* 입력 영역 컨테이너 */
+        .input-container {
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: env(safe-area-inset-bottom); /* 아이폰 하단 대응 */
+        }
+
+        /* 기능 선택 버튼 (스크롤) */
+        .mode-selector {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            background: #fafafa;
+        }
+        
+        .mode-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            white-space: nowrap;
+            cursor: pointer;
+            color: #555;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        .mode-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        /* 추천 검색어 (Chips) */
+        .suggestion-area {
+            padding: 8px 10px 0 10px;
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            display: none; /* 기본 숨김 */
+        }
+        
+        .chip {
+            background-color: #eef2ff;
+            color: var(--primary-color);
+            border: 1px solid #dbeafe;
+            padding: 6px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* 입력창 및 전송 버튼 */
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            align-items: center;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 1em;
+            background-color: #f9f9f9;
+        }
+        
+        input[type="text"]:focus {
+            background-color: white;
+            border-color: var(--primary-color);
+        }
+
+        button#send-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            height: 42px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        
+        button#send-btn:disabled {
+            background: #ccc;
+        }
+
+        /* 로딩 애니메이션 */
+        .loading {
+            display: none;
+            align-self: center;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-top: 10px;
+            position: absolute;
+            top: 50%;
+            z-index: 100;
+        }
+        
+        /* 마크다운 스타일 (볼드체 강조) */
+        .bot-msg strong { color: #e53935; font-weight: bold; }
+
     </style>
-  </head>
-  <body>
-    <div class="header">🎓 일학습병행 스마트 AI 튜터</div>
+</head>
+<body>
+
+    <div class="header">🎓 일학습병행 AI 튜터</div>
     
     <div id="chat-container">
-      <div class="message bot-msg">
-        안녕하세요! 👋<br>
-        무엇을 도와드릴까요? 아래 버튼을 눌러 기능을 선택해보세요.
-      </div>
+        <div class="message bot-msg">
+            <span class="bot-profile">🤖</span>
+            안녕하세요! <strong>일학습병행 AI 튜터</strong>입니다.<br>
+            아래 버튼을 눌러 기능을 선택하고 대화를 시작해 보세요!
+        </div>
     </div>
 
-    <div class="typing-indicator" id="loading">
-      답변 작성 중 <span></span><span></span><span></span>
-    </div>
+    <div id="loading-spinner" class="loading">답변 생성 중...</div>
 
-    <div class="input-area">
-      <div class="mode-selector">
-        <button class="mode-btn active" onclick="setMode('일반', this)">💬 일반대화</button>
-        <button class="mode-btn" onclick="setMode('규정', this)">📘 규정검색</button>
-        <button class="mode-btn" onclick="setMode('일지', this)">📝 일지작성</button>
-        <button class="mode-btn" onclick="setMode('안전', this)">⛑️ 안전수칙</button>
-        <button class="mode-btn" onclick="setMode('평가', this)">📊 평가생성</button>
-        <button class="mode-btn" onclick="setMode('상담', this)">🩹 상담일지</button>
-        <button class="mode-btn" onclick="setMode('퀴즈', this)">🎯 퀴즈</button>
-        <button class="mode-btn" onclick="setMode('TBM', this)">📢 TBM</button>
-        <button class="mode-btn" onclick="setMode('통역', this)">🌏 통역</button>
-      </div>
+    <div class="input-container">
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="setMode('일반', this)">💬 일반대화</button>
+            <button class="mode-btn" onclick="setMode('/퀴즈', this)">🎯 퀴즈</button>
+            <button class="mode-btn" onclick="setMode('/의견', this)">📝 평가/의견</button>
+            <button class="mode-btn" onclick="setMode('/상담', this)">🩹 상담일지</button>
+            <button class="mode-btn" onclick="setMode('/일지', this)">📔 훈련일지</button>
+            <button class="mode-btn" onclick="setMode('/안전', this)">⛑️ 안전수칙</button>
+        </div>
 
-      <div class="input-wrapper">
-        <input type="text" id="user-input" placeholder="메시지를 입력하세요..." onkeypress="handleEnter(event)">
-        <button id="send-btn" onclick="sendMessage()">전송</button>
-      </div>
+        <div id="suggestion-area" class="suggestion-area"></div>
+
+        <div class="input-wrapper">
+            <input type="text" id="user-input" placeholder="메시지를 입력하세요..." onkeypress="handleEnter(event)">
+            <button id="send-btn" onclick="sendMessage()">전송</button>
+        </div>
     </div>
 
     <script>
-      // 🚨 여기에 아까 배포한 Apps Script의 '웹 앱 URL'을 넣으세요!
-      // (끝이 /exec로 끝나는 주소여야 합니다)
-      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/xxxxxxxxxxxx/exec";
+        // 🚨 배포한 Apps Script의 웹 앱 URL을 여기에 넣으세요!
+        // (반드시 exec로 끝나는 주소여야 합니다)
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzToluk1SIqKOkWeUNbhPyKIWmgAzj4O-6FtRUdrl44kU0zznVNuf-fZ84JalCnAno/exec"; 
 
-      let currentMode = '일반';
+        let currentCommand = ''; // 현재 선택된 명령어 (예: /퀴즈)
+        
+        // 기능별 추천 예시 데이터 (선생님이 원하신 4가지 예시 적용)
+        const suggestions = {
+            '/퀴즈': [
+                "사다리 작업 시 안전 수칙",
+                "CO2 용접 토치 각도와 진행 방향",
+                "에스프레소 과소 추출의 원인",
+                "파이썬 변수 명명 규칙"
+            ],
+            '/의견': [
+                "용접 비드 모양은 좋은데 보호구를 자꾸 깜빡함",
+                "인사는 잘하고 성실한데 도면 해독을 어려워함",
+                "하나를 가르치면 열을 앎. 손이 빠르고 동료들도 잘 도와줌",
+                "지각이 잦고 수업 시간에 자주 조음"
+            ],
+            '/상담': [
+                "일이 생각보다 너무 힘들어서 퇴사 고민 중",
+                "사수랑 사이가 안 좋음. 물어보기가 겁남",
+                "다음 달 외부평가 떨어질까 봐 너무 불안해함",
+                "월급이 적어서 생활이 힘들다고 가불 물어봄"
+            ],
+            '/일지': [
+                "에스프레소 추출 실습, 원두 분쇄도 조절",
+                "보일러 급수 연수기 점검, 펌프 조작",
+                "범용 선반 가공, 공작물 중심 맞추기",
+                "3D 프린터 출력 실습, 필라멘트 교체"
+            ],
+            '/안전': [
+                "아크 용접기 사용",
+                "밀링 머신 사용",
+                "지게차 화물 운반 작업",
+                "배전반 차단기 교체 작업"
+            ]
+        };
 
-      function setMode(mode, btn) {
-        currentMode = mode;
-        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const input = document.getElementById('user-input');
-        input.placeholder = (mode === '일지') ? "예: 용접 실습, 비드 확인했습니다" : 
-                            (mode === '규정') ? "예: 출석 인정 기준이 뭐야?" : 
-                            mode + " 관련 내용을 입력하세요...";
-        input.focus();
-      }
+        // 모드 변경 함수
+        function setMode(command, btn) {
+            currentCommand = command === '일반' ? '' : command;
+            
+            // 버튼 활성화 스타일
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // 입력창 힌트 변경
+            const input = document.getElementById('user-input');
+            input.placeholder = command === '일반' ? "무엇이든 물어보세요..." : `${command.replace('/','')} 관련 내용을 입력하세요...`;
+            input.focus();
 
-      function handleEnter(e) {
-        if (e.key === 'Enter') sendMessage();
-      }
+            // 추천 칩(Chips) 업데이트
+            updateSuggestions(command);
+        }
 
-      function sendMessage() {
-        const input = document.getElementById('user-input');
-        const message = input.value.trim();
-        if (!message) return;
+        // 추천 칩 업데이트 함수
+        function updateSuggestions(command) {
+            const area = document.getElementById('suggestion-area');
+            area.innerHTML = ''; // 기존 칩 초기화
+            
+            if (suggestions[command]) {
+                area.style.display = 'flex'; // 보이기
+                suggestions[command].forEach(text => {
+                    const chip = document.createElement('div');
+                    chip.className = 'chip';
+                    chip.innerText = text;
+                    chip.onclick = () => {
+                        document.getElementById('user-input').value = text; // 클릭 시 입력창에 자동 입력
+                        sendMessage(); // 바로 전송 원하면 이 줄 유지, 아니면 삭제
+                    };
+                    area.appendChild(chip);
+                });
+            } else {
+                area.style.display = 'none'; // 숨기기
+            }
+        }
 
-        addMessage(message, 'user');
-        input.value = '';
-        input.disabled = true;
-        document.getElementById('send-btn').disabled = true;
-        document.getElementById('loading').style.display = 'block';
-        scrollToBottom();
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
 
-        // [수정된 부분] google.script.run 대신 fetch 사용
-        fetch(APPS_SCRIPT_URL, {
-          method: 'POST',
-          // 중요: CORS 문제 회피를 위해 text/plain 사용
-          body: JSON.stringify({ mode: currentMode, message: message })
-        })
-        .then(response => response.text())
-        .then(text => {
-          document.getElementById('loading').style.display = 'none';
-          addMessage(text, 'bot');
-          input.disabled = false;
-          document.getElementById('send-btn').disabled = false;
-          input.focus();
-        })
-        .catch(error => {
-          document.getElementById('loading').style.display = 'none';
-          addMessage("통신 오류가 발생했습니다.", 'bot');
-          console.error(error);
-          input.disabled = false;
-          document.getElementById('send-btn').disabled = false;
-        });
-      }
-      
-      // ... (addMessage, scrollToBottom 함수는 기존과 동일) ...
-      function addMessage(text, sender) {
-        const container = document.getElementById('chat-container');
-        const div = document.createElement('div');
-        div.className = `message ${sender}-msg`;
-        div.innerHTML = text.replace(/\n/g, '<br>');
-        container.appendChild(div);
-        scrollToBottom();
-      }
-      function scrollToBottom() {
-        const container = document.getElementById('chat-container');
-        container.scrollTop = container.scrollHeight;
-      }
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // 1. 내 메시지 표시
+            addMessage(message, 'user');
+            input.value = '';
+            input.disabled = true;
+            
+            // 2. 로딩 표시
+            document.getElementById('loading-spinner').style.display = 'block';
+
+            // 3. 서버로 전송 (명령어 + 텍스트)
+            // 슬랙 명령어처럼 "/퀴즈 내용" 형태로 합쳐서 보냄
+            const fullText = currentCommand ? `${currentCommand} ${message}` : message;
+            
+            // form-urlencoded 방식으로 전송 (Apps Script doPost 호환성 최적화)
+            const formData = new URLSearchParams();
+            formData.append('command', currentCommand); // 봇 로직에서 command 구분용
+            formData.append('text', message);           // 실제 내용
+
+            fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading-spinner').style.display = 'none';
+                input.disabled = false;
+                
+                // Slack 포맷의 응답(blocks)에서 텍스트만 추출해서 보여줌
+                let botText = "";
+                if (data.blocks && data.blocks.length > 1) {
+                    botText = data.blocks[1].text.text; // 보통 두 번째 블록에 답변이 있음
+                } else if (data.text) {
+                    botText = data.text;
+                } else {
+                    botText = "답변을 불러올 수 없습니다.";
+                }
+
+                addMessage(botText, 'bot');
+                input.focus();
+            })
+            .catch(error => {
+                document.getElementById('loading-spinner').style.display = 'none';
+                input.disabled = false;
+                addMessage("🚨 통신 오류가 발생했습니다.", 'bot');
+                console.error(error);
+            });
+        }
+
+        function addMessage(text, sender) {
+            const container = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            div.className = `message ${sender}-msg`;
+            
+            // 마크다운 스타일 간단 변환 (줄바꿈, 볼드)
+            let formattedText = text.replace(/\n/g, '<br>');
+            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // **볼드** 처리
+            
+            div.innerHTML = formattedText;
+            container.appendChild(div);
+            
+            // 스크롤 최하단으로 이동
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 초기 실행
+        setMode('일반', document.querySelector('.mode-btn'));
     </script>
-  </body>
+</body>
 </html>
